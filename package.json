@@ -1,5 +1,5 @@
 {
-  "name": "astroturf",
+  "name": "@amokrushin/astroturf",
   "version": "0.9.1",
   "description": "Extract and process inline CSS literals in JavaScript files",
   "main": "lib/index.js",
@@ -114,5 +114,8 @@
     "memory-fs": "^0.4.1",
     "postcss-loader": "^3.0.0",
     "postcss-nested": "^4.1.1"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
