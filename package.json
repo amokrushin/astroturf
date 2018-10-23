@@ -1,5 +1,5 @@
 {
-  "name": "astroturf",
+  "name": "@amokrushin/astroturf",
   "version": "0.7.2",
   "description": "Extract and process inline CSS literals in JavaScript files",
   "main": "lib/index.js",
@@ -109,5 +109,8 @@
   },
   "release": {
     "publishDir": "lib"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
