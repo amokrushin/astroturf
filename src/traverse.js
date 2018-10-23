@@ -8,6 +8,7 @@ export default function traverse(source, filename, opts) {
   return transformSync(source, {
     filename,
     babelrc: false,
+    configFile: false,
     code: false,
     ast: false,
     plugins: [[plugin, opts]],
