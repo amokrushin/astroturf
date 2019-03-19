@@ -6,7 +6,6 @@
 - Use your existing tools – **Sass, PostCSS, Less** – but still write your style definitions in your JavaScript files
 - **Whole component in the single file**. Write CSS in a template literal, then use it as if it were in a separate file
 
-
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -18,7 +17,7 @@
   - [Composition, variables, etc?](#composition-variables-etc)
   - [Sharing values between styles and JavaScript](#sharing-values-between-styles-and-javascript)
   - [Keyframes and global](#keyframes-and-global)
-  - [With props](#with-props)
+  - [Helpers](#helpers)
   - [`as` prop](#as-prop)
 - [Setup](#setup)
   - [Options](#options)
@@ -269,7 +268,7 @@ class Responsive extends React.Component {
   componentDidMount() {
     this.setState({
       isMobile: window.clientWidth < parseInt(breakpoints.md, 10)
-    }
+    })
   }
 
   render() {
@@ -314,17 +313,30 @@ const Loader = styled('div')`
 `;
 ```
 
-### With props
+### Helpers
 
-It can also be useful to create components with props already applied, like the example below. We recommend using recompose's `withProps` higher-order component to do this.
-
-**[`withProps` documentation](https://github.com/acdlite/recompose/blob/master/docs/API.md#withprops)**
+A common task with styled components is to configure or map their props. We include a few helpers you can
+optionally include to do this if you want, they are extra and if you don't use them they won't be included in your bundle. There are a few advantages to using the included helpers over a more general solution
+like `recompose`. They automatically forward `refs`, and don't muck with the `as` prop passthrough.
 
 ```jsx
 import styled from 'astroturf';
-import withProps from 'recompose/withProps';
+import { withProps, defaultProps, mapProps } from 'astroturf/helpers';
 
+// Map the incoming props to a new set of props
+const TextInput = mapProps(props => ({ ...props, type: 'password' }))(
+  styled('input')`
+    background-color: #ccc;
+  `,
+);
+
+// Provides `type` automatically and passes through everything else
 const PasswordInput = withProps({ type: 'password' })(styled('input')`
+  background-color: #ccc;
+`);
+
+// Sets the default `type` to `text` but allow overrides to it
+const TextInput = withProps({ type: 'text' })(styled('input')`
   background-color: #ccc;
 `);
 ```
@@ -334,7 +346,7 @@ const PasswordInput = withProps({ type: 'password' })(styled('input')`
 `astroturf` supports the `as` prop to control the underlying element type at runtime.
 
 ```js
-const Button styled('button')`
+const Button = styled('button')`
   color: red;
 `
 
@@ -344,7 +356,7 @@ const Button styled('button')`
 **This feature is only enabled by default for host components**, e.g. native DOM elements. We do this to prevent annoying conflicts with other UI libraries like react-bootstrap or semantic-ui which also use the the `as` prop. If you want to enable it for any styled component you can do so via the `allowAs` option.
 
 ```js
-const StyledFooter styled(Footer, { allowAs: true })`
+const StyledFooter = styled(Footer, { allowAs: true })`
   color: red;
 `
 ```
@@ -370,8 +382,8 @@ If you want the simplest, most bare-bones setup you can use the included `css-lo
         test: /\.tsx?$/,
         use: ['ts-loader', 'astroturf/loader'],
       },
-    }
-  ]
+    ]
+  }
 }
 ```
 
@@ -395,7 +407,7 @@ You can add on here as you would normally for additional preprocesser setup. Her
           },
         ],
       },
-    ];
+    ],
   }
 }
 ```
@@ -421,6 +433,34 @@ astroturf accepts a few query options.
 - **extension**: (default: `'.css'`) the extension used for extracted "virtual" files. Change to whatever file type you want webpack to process extracted literals as.
 
 **Note:** astroturf expects uncompiled JavaScript code, If you are using babel or Typescript to transform tagged template literals, ensure the loader runs _before_ babel or typescript loaders.
+
+### Use with Parcel
+
+Add these lines to `package.json` to work with [Parcel](https://parceljs.org/) builder:
+
+```json
+  "postcss": {
+    "modules": true,
+    "plugins": [
+      "postcss-nested"
+    ]
+  },
+  "babel": {
+    "plugins": [
+      "astroturf/plugin"
+    ]
+  },
+```
+
+### Use with Preact
+
+Add these lines to `package.json` to work with [Preact](https://preactjs.com/):
+
+```json
+  "browser": {
+    "react": "preact"
+  },
+```
 
 ### Use without webpack
 

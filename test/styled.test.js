@@ -2,6 +2,7 @@ import React from 'react';
 import { mount } from 'enzyme';
 
 import styled from '../src/index';
+import { withProps } from '../src/helpers';
 
 describe('styled', () => {
   it('should render the component with styles', () => {
@@ -15,6 +16,7 @@ describe('styled', () => {
         dangerous: 'dangerous',
         themePrimary: 'primary',
         'size-sm': 'small',
+        'foo-1': 'foo',
       },
       'fancy-box',
       'fancyBox',
@@ -28,8 +30,9 @@ describe('styled', () => {
           dangerous={null}
           size="sm"
           theme="primary"
+          foo={1}
         />,
-      ).find('div.green.primary.small'),
+      ).find('div.green.primary.small.foo'),
     ).toHaveLength(1);
   });
 
@@ -113,7 +116,7 @@ describe('styled', () => {
       'fancyBox',
     );
     const Component = styled(
-      Inner,
+      withProps({})(Inner),
       null,
       'Outer',
       { green: 'green' },
