@@ -13,14 +13,19 @@
 - [Usage](#usage)
 - [Extensions](#extensions)
 - [Component API](#component-api)
-  - [WHY?!](#why)
+- [`css` prop](#css-prop)
+  - [Component API Goals and Non-Goals](#component-api-goals-and-non-goals)
   - [Composition, variables, etc?](#composition-variables-etc)
+  - [Referring to other Components](#referring-to-other-components)
   - [Sharing values between styles and JavaScript](#sharing-values-between-styles-and-javascript)
   - [Keyframes and global](#keyframes-and-global)
-  - [Helpers](#helpers)
+  - [Attaching Additional Props](#attaching-additional-props)
   - [`as` prop](#as-prop)
 - [Setup](#setup)
   - [Options](#options)
+  - [Use with Parcel](#use-with-parcel)
+  - [Use with Preact](#use-with-preact)
+  - [Use with Next.js](#use-with-nextjs)
   - [Use without webpack](#use-without-webpack)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -74,7 +79,7 @@ const styles = css`
 
 ## Component API
 
-For those that want something a bit more like styled-components or emotion, there is a component API!
+For those that want something a bit more like styled-components or Emotion, there is a component API!
 
 ```js
 import styled, { css } from 'astroturf';
@@ -141,7 +146,38 @@ function Button({ primary, color, className, ...props }) {
 }
 ```
 
-Styles are still extracted to a separate file, any props matching other defined classes are passed to the `classNames()` library. At runtime `styled()` returns a React component with the static CSS classes applied. You can check out the ["runtime"](https://github.com/4Catalyzer/astroturf/blob/master/src/runtime/styled.js#L16) it just creates a component.
+## `css` prop
+
+In addition to the `styled` helper, styles can be defined directly on components via the `css` prop.
+You first need to enable this feature via the `enableCssProp` option in your loader config
+
+```jsx
+function Button({ variant, children }) {
+  return (
+    <button
+      variant={variant}
+      css={css`
+        color: black;
+        border: 1px solid black;
+        background-color: white;
+
+        &.variant-primary {
+          color: blue;
+          border: 1px solid blue;
+        }
+
+        &.variant-secondary {
+          color: green;
+        }
+      `}
+    >
+      children
+    </button>
+  );
+}
+```
+
+Styles are still extracted to a separate file, any props matching other defined classes are passed to the `classNames()` library. At runtime `styled()` returns a React component with the static CSS classes applied. You can check out the ["runtime"](https://github.com/4Catalyzer/astroturf/blob/master/src/runtime/styled.js) it just creates a component.
 
 There are a whole bucket of caveats of course, to keep the above statically extractable, and limit runtime code.
 
@@ -149,15 +185,15 @@ There are a whole bucket of caveats of course, to keep the above statically extr
 - Prop value handling requires the nesting transform
 - All "top level" styles have any @import statements hoisted up (via a regex)
 
-### WHY?!
+### Component API Goals and Non-Goals
 
 The goal of this API is not to mimic or reimplement the features of other css-in-js libraries, but to provide
 a more ergonomic way to write normal css/less/sass next to your javascript.
 
-What does that mean? css-in-js libraries are often a _replacement_ for css preprocessors, in that they provide ways of doing variables, composition, mixins, imports etc. Usually they accomplish this by leaning
+What does that mean? css-in-js libraries are a _replacement_ for css preprocessors, in that they provide ways of doing variables, composition, mixins, imports etc. Usually they accomplish this by leaning
 on JS language features where appropriate, and adding their own domain-specific language bits when needed.
 
-astroturf **doesn't try to do any of that** because it's not trying to replace preprocessors but rather, make component-centric javascript work better with **existing** styling tooling. This means at a minimum it needs to scope styles to the component (handled by css-modules) and map those styles to your component's API (props), which is what the above API strives for.
+astroturf **doesn't try to do any of that** because it's not trying to replace preprocessors, but rather, make component-centric javascript work better with **existing** styling tooling. This means at a minimum it needs to scope styles to the component (handled by css-modules) and map those styles to your component's API (props), which is what the above API strives for.
 
 This approach **gains** us:
 
@@ -174,7 +210,7 @@ It also means we **sacrifice**:
 
 ### Composition, variables, etc?
 
-How you accomplish that is mostly up to your preprocessor. Leverage Sass variables, or Less mixins, or postcss nesting polyfills, or whatever. The css you're writing is treated exactly like a normal style file so all the tooling you're used to works as expected. For composition, specifically around classes, you can also use css-modules `composes` to compose styles, since astroturf extracts styles to consistent names;
+How you accomplish that is mostly up to your preprocessor. Leverage Sass variables, or Less mixins, or postcss nesting polyfills, or whatever. The css you're writing is treated exactly like a normal style file so all the tooling you're used to works as expected. For composition, specifically around classes, you can also use css-modules `composes` to compose styles and interpolation;
 
 ```js
 // Button.js
@@ -186,7 +222,7 @@ const helpers = css`
 `;
 
 const Title = styled('h3')`
-  composes: heavy from './Button-helpers.css';
+  composes: ${helpers.heavy};
 
   font-size: 12%;
 `;
@@ -210,6 +246,36 @@ const Title = styled('h3')`
 
   @include heavy();
   font-size: 12%;
+`;
+```
+
+### Referring to other Components
+
+One limitation to fully encapsulated styles is that it's hard to contextually style components
+without them referencing each other. In astroturf you can use a component in a
+selector as if it were referencing a class selector.
+
+> Note: Referencing stylesheets or styled components from other files has a few caveats:
+> [cross-file-dependencies](/docs/cross-file-dependencies.md)
+
+```js
+const Link = styled.a`
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  background: papayawhip;
+  color: palevioletred;
+`;
+
+const Icon = styled.svg`
+  flex: none;
+  transition: fill 0.25s;
+  width: 48px;
+  height: 48px;
+
+  ${Link}:hover & {
+    fill: rebeccapurple;
+  }
 `;
 ```
 
@@ -264,7 +330,8 @@ const breakpointValues = css`
 `
 
 class Responsive extends React.Component {
-  state = { blue: false }
+  state = { isMobile: false }
+
   componentDidMount() {
     this.setState({
       isMobile: window.clientWidth < parseInt(breakpoints.md, 10)
@@ -313,31 +380,49 @@ const Loader = styled('div')`
 `;
 ```
 
-### Helpers
+### Attaching Additional Props
 
-A common task with styled components is to configure or map their props. We include a few helpers you can
-optionally include to do this if you want, they are extra and if you don't use them they won't be included in your bundle. There are a few advantages to using the included helpers over a more general solution
-like `recompose`. They automatically forward `refs`, and don't muck with the `as` prop passthrough.
+A common task with styled components is to map their props or set default values.
+astroturf cribs from Styled Components, by including an `attrs()` api.
 
 ```jsx
 import styled from 'astroturf';
-import { withProps, defaultProps, mapProps } from 'astroturf/helpers';
+
+// Provide a default `type` props
+const PasswordInput = styled('input').attrs({
+  type: 'password',
+})`
+  background-color: #ccc;
+`;
 
 // Map the incoming props to a new set of props
-const TextInput = mapProps(props => ({ ...props, type: 'password' }))(
-  styled('input')`
-    background-color: #ccc;
-  `,
-);
-
-// Provides `type` automatically and passes through everything else
-const PasswordInput = withProps({ type: 'password' })(styled('input')`
+const TextOrPasswordInput = styled('input').attrs(
+  ({ isPassword, ...props }) => ({
+    ...props,
+    type: isPassword ? 'password' : 'text',
+  }),
+)`
   background-color: #ccc;
+`;
+```
+
+Because `attrs()` is resolved during render you can use hooks in them! We even
+do some magic in the non-function signature so that it works.
+
+```js
+const Link = styled('a').attrs(props => ({
+  href: useRouter().createHref(props.to)
+}))`
+  color: blue;
 `);
 
-// Sets the default `type` to `text` but allow overrides to it
-const TextInput = withProps({ type: 'text' })(styled('input')`
-  background-color: #ccc;
+// astroturf will automatically compile to a function
+// when using a plain object so that the hooks
+// are only evaluated during render
+const Link = styled(MyLink).attrs({
+  router: useRouter()
+})`
+  color: blue;
 `);
 ```
 
@@ -358,7 +443,7 @@ const Button = styled('button')`
 ```js
 const StyledFooter = styled(Footer, { allowAs: true })`
   color: red;
-`
+`;
 ```
 
 ## Setup
@@ -382,7 +467,7 @@ If you want the simplest, most bare-bones setup you can use the included `css-lo
         test: /\.tsx?$/,
         use: ['ts-loader', 'astroturf/loader'],
       },
-    ]
+    ];
   }
 }
 ```
@@ -394,7 +479,7 @@ You can add on here as you would normally for additional preprocesser setup. Her
   module: {
     rules: [
       {
-        test: /\module\.scss$/,
+        test: /\.module\.scss$/,
         use: ['style-loader', 'astroturf/css-loader', 'sass-loader'],
       },
       {
@@ -417,7 +502,7 @@ You can also skip the included `css-loader` entirely if your preprocessor handle
 ```js
 [
   {
-    test: /\.scss$/,
+    test: /\.module\.scss$/,
     use: ['style-loader', 'css-loader?modules=true', 'sass-loader'],
   },
   ...
@@ -431,6 +516,7 @@ astroturf accepts a few query options.
 - **tagName**: (default: `'css'`) The tag identifier used to locate inline css literals and extract them.
 - **styledTag**: (default: `'styled'`) The tag identifier used to locate components.
 - **extension**: (default: `'.css'`) the extension used for extracted "virtual" files. Change to whatever file type you want webpack to process extracted literals as.
+- **enableCssProp**: (default: false) compiles `css` props to styled components.
 
 **Note:** astroturf expects uncompiled JavaScript code, If you are using babel or Typescript to transform tagged template literals, ensure the loader runs _before_ babel or typescript loaders.
 
@@ -461,6 +547,10 @@ Add these lines to `package.json` to work with [Preact](https://preactjs.com/):
     "react": "preact"
   },
 ```
+
+### Use with Next.js
+
+See [example](https://github.com/zeit/next.js/tree/canary/examples/with-astroturf)
 
 ### Use without webpack
 

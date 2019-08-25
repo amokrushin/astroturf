@@ -1,17 +1,16 @@
-// TypeScript Version: 3.2
+// TypeScript Version: 3.0
 
-import React from 'react';
 import styled, { css } from 'astroturf';
-
 import { mapProps, withProps } from 'astroturf/helpers';
+import * as React from 'react';
 
-// $ExpectType StyledFunction<"a", {}>
+// $ExpectType StyledFunction<"a", {}, never>
 styled.a;
-// $ExpectType StyledFunction<"body", {}>
+// $ExpectType StyledFunction<"body", {}, never>
 styled.body;
-// $ExpectType StyledFunction<"div", {}>
+// $ExpectType StyledFunction<"div", {}, never>
 styled.div;
-// $ExpectType StyledFunction<"svg", {}>
+// $ExpectType StyledFunction<"svg", {}, never>
 styled.svg;
 
 // tslint:disable-next-line:interface-over-type-literal
@@ -50,17 +49,12 @@ declare const ReactSFC2: React.SFC<ReactSFCProps2>;
 const Button0 = styled('button')`
   color: blue;
 `;
-const Button1 = styled('button')({
-  color: 'blue',
-});
-<div>
-  <Button0 />
-  <Button0 type="button" />
-</div>;
-<div>
-  <Button1 />
-  <Button1 type="button" />
-</div>;
+
+<Button0 />;
+<Button0 type="button" />;
+
+// href not allowed
+<Button0 type="button" href />; // $ExpectError
 
 const Input0 = styled('input', {
   allowAs: true,
@@ -265,6 +259,39 @@ const AsComponent1 = styled('input')``;
 
   // inn not assignable
   <Enhanced2 inn={124} />; // $ExpectError
+}
+
+// attrs
+{
+  const AttrsInput = styled('input').attrs({
+    type: 'password',
+  })`
+    color: palevioletred;
+    font-size: 1em;
+    border: 2px solid palevioletred;
+    border-radius: 3px;
+  `;
+
+  const AttrsWithOnlyNewProps = styled.h2.attrs(p => ({ as: 'h1', ...p }))`
+    color: blue;
+    font-size: 14px;
+  `;
+
+  const AttrsInputExtra = styled(AttrsInput).attrs({ autoComplete: 'off' })``;
+
+  <AttrsInputExtra />;
+
+  const ButtonAttrs = styled(ReactSFC0).attrs({ foo: true, column: true })``;
+
+  // Ideally should complain about foo?
+  <ButtonAttrs />;
+
+  const ButtonAttrs2 = styled(ReactSFC0).attrs<{ other: boolean }>(p => ({
+    column: p.column,
+    other: p.other,
+  }))``;
+
+  <ButtonAttrs2 />;
 }
 
 css`

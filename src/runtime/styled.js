@@ -9,64 +9,96 @@ const camelCase = str =>
     '',
   );
 
-function styled(type, options, displayName, styles, kebabName, camelName) {
+function varsToStyles(props, vars) {
+  if (!vars || !vars.length) return props.style;
+  const style = { ...props.style };
+  vars.forEach(([id, value, unit = '']) => {
+    const result = typeof value === 'function' ? value(props) : value;
+    style[`--${id}`] = `${result}${unit}`;
+  });
+  return style;
+}
+
+function propsToStyles(props, styles, hasModifiers) {
+  const componentClassName = styles.cls2 || styles.cls1;
+  let className = props.className
+    ? `${props.className} ${componentClassName}`
+    : componentClassName;
+
+  if (hasModifiers) {
+    Object.keys(props).forEach(propName => {
+      const propValue = props[propName];
+      const typeOf = typeof propValue;
+
+      if (typeOf === 'boolean' || propValue == null) {
+        if (styles[propName]) {
+          if (propValue) {
+            className += ` ${styles[propName]}`;
+          }
+
+          delete props[propName];
+        } else {
+          const camelPropName = camelCase(propName);
+
+          if (styles[camelPropName]) {
+            if (propValue) {
+              className += ` ${styles[camelPropName]}`;
+            }
+            delete props[propName];
+          }
+        }
+      } else if (typeOf === 'string' || typeOf === 'number') {
+        const propKey = `${propName}-${propValue}`;
+
+        if (styles[propKey]) {
+          className += ` ${styles[propKey]}`;
+          delete props[propName];
+        } else {
+          const camelPropKey = camelCase(propKey);
+
+          if (styles[camelPropKey]) {
+            className += ` ${styles[camelPropKey]}`;
+            delete props[propName];
+          }
+        }
+      }
+    });
+  }
+  return className;
+}
+
+function styled(type, options, settings) {
+  if (__DEV__) {
+    if (Array.isArray(type))
+      throw new Error(
+        'This styled() template tag was mistakenly evaluated at runtime. ' +
+          'Make sure astroturf is properly configured to compile this file',
+      );
+    if (typeof settings === 'string')
+      throw new Error(
+        'It looks like you have incompatible astroturf versions in your app. ' +
+          'This runtime expects styles compiled with a newer version of astroturf, ' +
+          'ensure that your versions are properly deduped and upgraded. ',
+      );
+  }
+  const { displayName, attrs, vars, styles } = settings;
+
   options = options || { allowAs: typeof type === 'string' };
-  const componentClassName = styles[kebabName] || styles[camelName];
 
   // always passthrough if the type is a styled component
   const allowAs = type.isAstroturf ? false : options.allowAs;
 
   const hasModifiers = Object.keys(styles).some(
-    className => className !== camelName && className !== kebabName,
+    className => className !== (styles.cls2 || styles.cls1),
   );
 
-  function Styled(props, ref) {
+  function Styled(rawProps, ref) {
+    const props = attrs ? attrs(rawProps) : rawProps;
     const childProps = { ...props, ref };
+
     if (allowAs) delete childProps.as;
-
-    const classNames = [childProps.className || '', componentClassName];
-
-    if (hasModifiers) {
-      Object.keys(props).forEach(propName => {
-        const propValue = props[propName];
-        const typeOf = typeof propValue;
-
-        if (typeOf === 'boolean' || propValue == null) {
-          if (styles[propName]) {
-            if (propValue) {
-              classNames.push(styles[propName]);
-            }
-
-            delete childProps[propName];
-          } else {
-            const camelPropName = camelCase(propName);
-
-            if (styles[camelPropName]) {
-              if (propValue) {
-                classNames.push(styles[camelPropName]);
-              }
-              delete childProps[propName];
-            }
-          }
-        } else if (typeOf === 'string' || typeOf === 'number') {
-          const propKey = `${propName}-${propValue}`;
-
-          if (styles[propKey]) {
-            classNames.push(styles[propKey]);
-            delete childProps[propName];
-          } else {
-            const camelPropKey = camelCase(propKey);
-
-            if (styles[camelPropKey]) {
-              classNames.push(styles[camelPropKey]);
-              delete childProps[propName];
-            }
-          }
-        }
-      });
-    }
-
-    childProps.className = classNames.join(' ');
+    childProps.style = varsToStyles(childProps, vars);
+    childProps.className = propsToStyles(childProps, styles, hasModifiers);
 
     return React.createElement(
       allowAs && props.as ? props.as : type,
@@ -80,19 +112,33 @@ function styled(type, options, displayName, styles, kebabName, camelName) {
 
   decorated.displayName = displayName;
 
-  decorated.withComponent = nextType =>
-    styled(nextType, options, displayName, styles, kebabName, camelName);
+  decorated.withComponent = nextType => styled(nextType, options, settings);
 
   decorated.isAstroturf = true;
 
   return decorated;
 }
 
+function jsx(type, props, ...children) {
+  if (props && props.css) {
+    const { css, ...childProps } = props;
+    childProps.style = varsToStyles(childProps, css[1]);
+    childProps.className = propsToStyles(childProps, css[0] || css, true);
+    props = childProps;
+  }
+  return React.createElement(type, props, ...children);
+}
+
 module.exports = styled;
 module.exports.styled = styled;
+module.exports.jsx = jsx;
+module.exports.F = React.Fragment;
 
 if (__DEV__) {
   module.exports.css = () => {
-    throw new Error('`css` template literal evaluated at runtime!');
+    throw new Error(
+      'css template literal evaluated at runtime. ' +
+        'Make sure astroturf is properly configured to compile this file',
+    );
   };
 }
